@@ -52,7 +52,8 @@ Deno.serve(async (req) => {
     }
   } else {
     // 对于其他所有请求，返回 index.html 内容
-    const htmlContent = await Deno.readTextFile('./index.html');
+    const filePath = new URL('./index.html', import.meta.url).pathname;
+    const htmlContent = await Deno.readTextFile(filePath);
     return new Response(htmlContent, {
       headers: { 'Content-Type': 'text/html; charset=utf-8', ...corsHeaders },
     });
