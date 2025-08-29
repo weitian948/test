@@ -76,6 +76,7 @@ const HTML_CONTENT = `
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gemini API 测试</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/markdown-it@13.0.1/dist/markdown-it.min.css">
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -135,6 +136,76 @@ const HTML_CONTENT = `
         .error {
             color: #dc3545;
         }
+        
+        /* Markdown样式 */
+        .markdown-content h1, .markdown-content h2, .markdown-content h3,
+        .markdown-content h4, .markdown-content h5, .markdown-content h6 {
+            margin-top: 1em;
+            margin-bottom: 0.5em;
+            font-weight: bold;
+        }
+        
+        .markdown-content h1 { font-size: 2em; border-bottom: 1px solid #eee; }
+        .markdown-content h2 { font-size: 1.5em; border-bottom: 1px solid #eee; }
+        .markdown-content h3 { font-size: 1.25em; }
+        
+        .markdown-content pre {
+            background-color: #f6f8fa;
+            border-radius: 6px;
+            padding: 16px;
+            overflow-x: auto;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.45;
+            margin: 1em 0;
+        }
+        
+        .markdown-content code {
+            background-color: rgba(27,31,35,0.05);
+            border-radius: 3px;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 85%;
+            margin: 0;
+            padding: 0.2em 0.4em;
+        }
+        
+        .markdown-content pre code {
+            background-color: transparent;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .markdown-content blockquote {
+            border-left: 4px solid #dfe2e5;
+            margin: 1em 0;
+            padding-left: 1em;
+            color: #6a737d;
+        }
+        
+        .markdown-content ul, .markdown-content ol {
+            margin: 1em 0;
+            padding-left: 2em;
+        }
+        
+        .markdown-content li {
+            margin: 0.25em 0;
+        }
+        
+        .markdown-content table {
+            border-collapse: collapse;
+            margin: 1em 0;
+            width: 100%;
+        }
+        
+        .markdown-content th, .markdown-content td {
+            border: 1px solid #dfe2e5;
+            padding: 6px 13px;
+        }
+        
+        .markdown-content th {
+            background-color: #f6f8fa;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
@@ -151,6 +222,7 @@ const HTML_CONTENT = `
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/markdown-it@13.0.1/dist/markdown-it.min.js"></script>
     <script>
         (function() {
             // 将函数挂载到全局作用域
@@ -194,9 +266,10 @@ const HTML_CONTENT = `
                     
                     if (data.response) {
                         console.log("成功获取Gemini回复");
+                        var renderedHtml = md.render(data.response);
                         displayArea.innerHTML = 
                             '<strong>您:</strong> ' + message + '<br><br>' +
-                            '<strong>Gemini:</strong> ' + data.response;
+                            '<strong>Gemini:</strong><br><div class="markdown-content">' + renderedHtml + '</div>';
                     } else {
                         console.log("收到错误响应");
                         displayArea.innerHTML = 
@@ -224,6 +297,9 @@ const HTML_CONTENT = `
                     window.sendMessage();
                 }
             });
+            
+            // 初始化Markdown渲染器
+            var md = window.markdownit();
             
             // 页面加载完成
             document.addEventListener('DOMContentLoaded', function() {
