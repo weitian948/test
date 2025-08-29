@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from "https://deno.land/x/gemini_api@0.0.7/mod.ts";
+import { GoogleGenerativeAI } from "npm:@google/generative-ai";
 
 // 注意：在生产环境中，强烈建议将 API 密钥作为环境变量进行管理，而不是直接硬编码在代码中。
 // 例如，在 Deno Deploy 项目设置中添加一个名为 GEMINI_API_KEY 的环境变量。
