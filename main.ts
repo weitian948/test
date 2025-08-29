@@ -6,8 +6,11 @@ const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/
 async function handleRequest(request: Request): Promise<Response> {
   const url = new URL(request.url);
   
+  console.log(`[${new Date().toISOString()}] ${request.method} ${url.pathname}`);
+  
   // 处理静态文件
   if (url.pathname === "/") {
+    console.log("[LOG] 返回主页HTML");
     return new Response(HTML_CONTENT, {
       headers: { "content-type": "text/html; charset=utf-8" },
     });
@@ -18,6 +21,8 @@ async function handleRequest(request: Request): Promise<Response> {
     try {
       const body = await request.json();
       const userMessage = body.message;
+      
+      console.log(`[LOG] 收到聊天请求，用户消息: "${userMessage}"`);
       
       const response = await fetch(GEMINI_API_URL, {
         method: "POST",
@@ -33,20 +38,34 @@ async function handleRequest(request: Request): Promise<Response> {
         }),
       });
       
-      const data = await response.json();
-      const geminiResponse = data.candidates[0].content.parts[0].text;
+      console.log(`[LOG] Gemini API响应状态: ${response.status}`);
       
-      return new Response(JSON.stringify({ response: geminiResponse }), {
-        headers: { "content-type": "application/json" },
-      });
+      const data = await response.json();
+      console.log("[LOG] Gemini API返回数据:", data);
+      
+      if (data.candidates && data.candidates[0]?.content?.parts?.[0]?.text) {
+        const geminiResponse = data.candidates[0].content.parts[0].text;
+        console.log(`[LOG] Gemini回复: "${geminiResponse.substring(0, 100)}..."`);
+        return new Response(JSON.stringify({ response: geminiResponse }), {
+          headers: { "content-type": "application/json" },
+        });
+      } else {
+        console.error("[ERROR] Gemini API返回格式异常:", data);
+        return new Response(JSON.stringify({ error: "API返回格式错误" }), {
+          status: 500,
+          headers: { "content-type": "application/json" },
+        });
+      }
     } catch (error) {
-      return new Response(JSON.stringify({ error: "请求失败" }), {
+      console.error("[ERROR] API调用失败:", error);
+      return new Response(JSON.stringify({ error: "请求失败: " + error.message }), {
         status: 500,
         headers: { "content-type": "application/json" },
       });
     }
   }
   
+  console.log(`[LOG] 未找到路由: ${url.pathname}`);
   return new Response("Not Found", { status: 404 });
 }
 
@@ -133,24 +152,38 @@ const HTML_CONTENT = `
     </div>
 
     <script>
+        function log(message) {
+            console.log(`[前端] ${new Date().toLocaleTimeString()} - ${message}`);
+        }
+
         async function sendMessage() {
+            log("=== 开始发送消息 ===");
+            
             const inputBox = document.getElementById('inputBox');
             const sendButton = document.getElementById('sendButton');
             const displayArea = document.getElementById('displayArea');
             
             const message = inputBox.value.trim();
-            if (!message) return;
+            log(`获取输入内容: "${message}"`);
             
+            if (!message) {
+                log("消息为空，取消发送");
+                return;
+            }
+            
+            log("禁用输入框和按钮");
             // 禁用输入和按钮
             inputBox.disabled = true;
             sendButton.disabled = true;
             
+            log("更新显示区域");
             // 显示用户消息
             displayArea.innerHTML = 
                 '<strong>您:</strong> ' + message + '\n\n' +
                 '<div class="loading">正在等待Gemini回复...</div>';
             
             try {
+                log(`准备发送请求到 /api/chat，消息: "${message}"`);
                 const response = await fetch('/api/chat', {
                     method: 'POST',
                     headers: {
@@ -159,35 +192,52 @@ const HTML_CONTENT = `
                     body: JSON.stringify({ message: message }),
                 });
                 
+                log(`收到响应，状态码: ${response.status}`);
                 const data = await response.json();
+                log("收到JSON数据:", data);
                 
                 if (data.response) {
+                    log("成功获取Gemini回复");
                     displayArea.innerHTML = 
                         '<strong>您:</strong> ' + message + '\n\n' +
                         '<strong>Gemini:</strong> ' + data.response;
                 } else {
+                    log("收到错误响应:", data.error);
                     displayArea.innerHTML = 
                         '<strong>您:</strong> ' + message + '\n\n' +
                         '<div class="error">错误: ' + (data.error || '未知错误') + '</div>';
                 }
             } catch (error) {
+                log("发生错误:", error.message);
                 displayArea.innerHTML = 
                     '<strong>您:</strong> ' + message + '\n\n' +
-                    '<div class="error">错误: 网络请求失败</div>';
+                    '<div class="error">错误: 网络请求失败 - ' + error.message + '</div>';
             }
             
+            log("重置输入框和按钮");
             // 重置输入
             inputBox.value = '';
             inputBox.disabled = false;
             sendButton.disabled = false;
             inputBox.focus();
+            log("=== 发送完成 ===");
         }
         
         // 支持回车发送
         document.getElementById('inputBox').addEventListener('keypress', function(e) {
+            log(`按键事件: key="${e.key}"`);
             if (e.key === 'Enter') {
+                log("检测到回车键，触发发送");
                 sendMessage();
             }
+        });
+        
+        // 页面加载完成日志
+        document.addEventListener('DOMContentLoaded', function() {
+            log("页面加载完成，所有元素已就绪");
+            log("输入框元素:", document.getElementById('inputBox'));
+            log("按钮元素:", document.getElementById('sendButton'));
+            log("显示区域元素:", document.getElementById('displayArea'));
         });
     </script>
 </body>
