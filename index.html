@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>长文档智能裁切工具</title>
+    <!-- 引入Google Fonts以获得杂志风格字体 -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Noto+Sans+SC:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --font-serif: 'Playfair Display', 'Noto Serif SC', serif;
+            --font-sans: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            --color-bg: #ffffff;
+            --color-text: #222222;
+            --color-light-gray: #f5f5f5;
+            --color-mid-gray: #dddddd;
+            --color-dark-gray: #888888;
+        }
+        body {
+            font-family: var(--font-sans);
+            background-color: var(--color-light-gray);
+            color: var(--color-text);
+            margin: 0;
+            padding: 40px 20px;
+            display: flex;
+            justify-content: center;
+        }
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            background-color: var(--color-bg);
+            padding: 50px;
+            border-radius: 4px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+        }
+        header { text-align: center; margin-bottom: 50px; }
+        .textarea {
+            width: calc(100% - 22px);
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 1px solid var(--color-mid-gray);
+            border-radius: 5px;
+            font-family: var(--font-sans);
+            font-size: 1em;
+            resize: vertical;
+        }
+        .response-area {
+            border: 1px solid var(--color-mid-gray);
+            border-radius: 5px;
+            padding: 20px;
+            background-color: #fafafa;
+            min-height: 150px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        h1 {
+            font-family: var(--font-serif);
+            font-size: 3em;
+            margin: 0 0 10px 0;
+            letter-spacing: 1px;
+        }
+        .intro {
+            font-size: 1.1em;
+            color: #555;
+            max-width: 700px;
+            margin: 0 auto 20px auto;
+            line-height: 1.6;
+        }
+        .subtitle { font-size: 0.9em; color: var(--color-dark-gray); }
+
+        .section {
+            margin-bottom: 40px;
+            padding-top: 20px;
+            border-top: 1px solid var(--color-mid-gray);
+        }
+        .section h2 {
+            font-family: var(--font-sans);
+            font-weight: 500;
+            font-size: 1.2em;
+            margin: 0 0 20px 0;
+            color: var(--color-text);
+        }
+
+        /* 上传按钮 */
+        .upload-area {
+            border: 2px dashed var(--color-mid-gray);
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            background-color: #fafafa;
+            position: relative;
+        }
+        .btn {
+            background-color: var(--color-text);
+            color: var(--color-bg);
+            border: none;
+            padding: 12px 25px;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .btn:hover { background-color: #444; }
+        .upload-area input[type=file] {
+            position: absolute; left: 0; top: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer;
+        }
+        #status { margin-top: 15px; color: var(--color-dark-gray); }
+
+        /* 比例选择 */
+        #ratio-buttons { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 15px; }
+        #ratio-buttons button {
+            background-color: transparent;
+            border: 1px solid var(--color-mid-gray);
+            color: #555;
+            padding: 8px 15px; cursor: pointer; border-radius: 5px; font-size: 14px; transition: all 0.2s;
+        }
+        #ratio-buttons button.active { background-color: var(--color-text); color: var(--color-bg); border-color: var(--color-text); }
+        #custom-ratio-inputs { display: none; align-items: center; gap: 5px; }
+        #custom-ratio-inputs input { width: 60px; padding: 5px; border: 1px solid var(--color-mid-gray); border-radius: 4px; text-align: center; }
+        
+        #preview-container { margin-top: 20px; text-align: center; background-color: var(--color-light-gray); padding: 20px; border-radius: 4px;}
+        #preview-container img { max-width: 100%; max-height: 400px; object-fit: contain; border: 1px solid var(--color-mid-gray); }
+
+        #output-container { margin-top: 20px; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 30px; }
+        .output-item { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+        .output-item canvas { width: 100%; height: auto; border: 1px solid var(--color-mid-gray); cursor: pointer; transition: box-shadow 0.2s ease; }
+        .output-item canvas:hover { box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .item-controls { width: 100%; text-align: center; }
+        .item-controls label { font-size: 12px; display: block; margin-bottom: 5px; color: #666; }
+        .item-controls input[type="range"] { width: 80%; }
+        .download-link { text-decoration: none; font-size: 14px; padding: 8px 15px; background-color: #eee; color: var(--color-text); border-radius: 5px; transition: background-color 0.2s; width: 80%; text-align: center; }
+        .download-link:hover { background-color: #ddd; }
+        #downloadAllBtn { display: none; margin-top: 20px; background-color: #333; }
+        
+        #preview-modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.85); justify-content: center; align-items: center; }
+        #modal-image { max-width: 90%; max-height: 90vh; object-fit: contain; }
+        #modal-close { position: absolute; top: 20px; right: 35px; color: #fff; font-size: 40px; font-weight: bold; cursor: pointer; }
+        
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <h1>长文档智能裁切工具</h1>
+            <p class="intro">与 Gemini AI 进行对话。</p>
+        </header>
+
+        <div class="section">
+            <h2>1. 输入您的消息</h2>
+            <textarea id="messageInput" class="textarea" placeholder="在此输入您的消息..." rows="5"></textarea>
+            <button id="sendMessageBtn" class="btn">发送</button>
+        </div>
+
+        <div class="section">
+            <h2>2. Gemini 的回复</h2>
+            <div id="responseArea" class="response-area">
+                <p>等待您的消息...</p>
+            </div>
+        </div>
+            </div>
+        </div>
+
+        </div>
+    </div>
+
+    <script>
+        const messageInput = document.getElementById('messageInput');
+        const sendMessageBtn = document.getElementById('sendMessageBtn');
+        const responseArea = document.getElementById('responseArea');
+
+        sendMessageBtn.addEventListener('click', async () => {
+            const message = messageInput.value.trim();
+            if (message) {
+                responseArea.innerHTML = '<p>正在发送消息...</p>';
+                try {
+                    const response = await fetch('/api/chat', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ message }),
+                    });
+                    const data = await response.json();
+                    if (response.ok) {
+                        responseArea.innerHTML = `<p>${data.reply}</p>`;
+                    } else {
+                        responseArea.innerHTML = `<p style="color: red;">错误: ${data.error}</p>`;
+                    }
+                } catch (error) {
+                    responseArea.innerHTML = `<p style="color: red;">请求失败: ${error.message}</p>`;
+                }
+            } else {
+                responseArea.innerHTML = '<p style="color: orange;">请输入您的消息。</p>';
+            }
+        });
+    </script>
+
+        // State
+        let originalImage = null;
+        let cropDataStore = [];
+        let currentAspectRatio = 3 / 4;
+
+        // --- File Handling ---
+        fileLoader.addEventListener('change', handleFile, false);
+
+        function handleFile(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            resetUI();
+            statusEl.textContent = '正在处理文件，请稍候...';
+
+            if (file.type.startsWith('image/')) {
+                processImageFile(file);
+            } else if (file.type === 'application/pdf') {
+                processPdfFile(file);
+            } else {
+                statusEl.innerHTML = '不支持的文件格式。<br>请上传 PNG, JPG, 或 PDF。对于 Word/TXT, 请先另存为 PDF。';
+            }
+        }
+
+        function processImageFile(file) {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const img = new Image();
+                img.onload = () => onSourceReady(img);
+                img.src = event.target.result;
+            }
+            reader.readAsDataURL(file);
+        }
+
+        async function processPdfFile(file) {
+            const reader = new FileReader();
+            reader.onload = async function(event) {
+                try {
+                    const pdf = await pdfjsLib.getDocument(event.target.result).promise;
+                    const pageCanvases = [];
+                    statusEl.textContent = `正在渲染 PDF (${pdf.numPages}页)...`;
+
+                    for (let i = 1; i <= pdf.numPages; i++) {
+                        const page = await pdf.getPage(i);
+                        const scale = 2.0; // Higher scale for better resolution
+                        const viewport = page.getViewport({ scale });
+                        const canvas = document.createElement('canvas');
+                        canvas.width = viewport.width;
+                        canvas.height = viewport.height;
+                        const context = canvas.getContext('2d');
+                        await page.render({ canvasContext: context, viewport: viewport }).promise;
+                        pageCanvases.push(canvas);
+                    }
+                    
+                    statusEl.textContent = '拼接 PDF 页面...';
+                    const masterCanvas = stitchCanvases(pageCanvases);
+                    const img = new Image();
+                    img.onload = () => onSourceReady(img);
+                    img.src = masterCanvas.toDataURL('image/png');
+
+                } catch (error) {
+                    console.error('Error processing PDF:', error);
+                    statusEl.textContent = 'PDF 文件处理失败，请检查文件是否损坏。';
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function stitchCanvases(canvases) {
+            const totalHeight = canvases.reduce((sum, canvas) => sum + canvas.height, 0);
+            const masterWidth = canvases.length > 0 ? canvases[0].width : 0;
+            const masterCanvas = document.createElement('canvas');
+            masterCanvas.width = masterWidth;
+            masterCanvas.height = totalHeight;
+            const ctx = masterCanvas.getContext('2d');
+            let currentY = 0;
+            canvases.forEach(canvas => {
+                ctx.drawImage(canvas, 0, currentY);
+                currentY += canvas.height;
+            });
+            return masterCanvas;
+        }
+
+        function onSourceReady(img) {
+            originalImage = img;
+            previewContainer.innerHTML = '';
+            previewContainer.appendChild(img);
+            
+            [ratioSection, previewSection, outputSection].forEach(s => s.classList.remove('hidden'));
+            statusEl.textContent = '文档加载成功！现在您可以选择比例并微调裁剪。';
+            initialCropSetup();
+        }
+
+        function resetUI() {
+            [ratioSection, previewSection, outputSection].forEach(s => s.classList.add('hidden'));
+            outputContainer.innerHTML = '';
+            cropDataStore = [];
+        }
+        
+        // --- Cropping Logic ---
+        function initialCropSetup() {
+            if (!originalImage || !currentAspectRatio) return;
+
+            outputContainer.innerHTML = '';
+            cropDataStore = [];
+
+            const w = originalImage.naturalWidth;
+            const h = originalImage.naturalHeight;
+            const isWide = (w / h) > currentAspectRatio;
+
+            let cropW, cropH, numCrops, maxAdjust;
+
+            if (isWide) {
+                cropH = h;
+                cropW = Math.floor(cropH * currentAspectRatio);
+                if (w < cropW) { statusEl.textContent = '错误：文档宽度不足。'; return; }
+                numCrops = Math.ceil(w / cropW);
+                maxAdjust = Math.floor(cropW / 3);
+            } else {
+                cropW = w;
+                cropH = Math.floor(cropW / currentAspectRatio);
+                if (h < cropH) { statusEl.textContent = '错误：文档高度不足。'; return; }
+                numCrops = Math.ceil(h / cropH);
+                maxAdjust = Math.floor(cropH / 3);
+            }
+            
+            for (let i = 0; i < numCrops; i++) {
+                createCropItemDOM(i, { isWide, cropW, cropH, maxAdjust });
+                renderSingleCrop(i);
+            }
+            downloadAllBtn.style.display = cropDataStore.length > 0 ? 'inline-block' : 'none';
+        }
+
+        function createCropItemDOM(index, config) {
+            const item = document.createElement('div');
+            item.className = 'output-item';
+            
+            const canvas = document.createElement('canvas');
+            canvas.width = config.cropW;
+            canvas.height = config.cropH;
+            canvas.style.aspectRatio = `${config.cropW} / ${config.cropH}`;
+            canvas.dataset.index = index;
+
+            item.innerHTML = `
+                <div class="item-controls">
+                    <label>布局调整 #${index + 1}</label>
+                    <input type="range" min="${-config.maxAdjust}" max="${config.maxAdjust}" value="0" data-index="${index}">
+                </div>
+                <a class="download-link">下载 #${index + 1}</a>
+            `;
+            item.prepend(canvas);
+            outputContainer.appendChild(item);
+
+            cropDataStore.push({
+                index: index,
+                canvas: canvas,
+                downloadLink: item.querySelector('.download-link'),
+                isWide: config.isWide,
+                baseX: config.isWide ? index * config.cropW : 0,
+                baseY: config.isWide ? 0 : index * config.cropH,
+                adjustment: 0,
+                cropWidth: config.cropW,
+                cropHeight: config.cropH,
+            });
+        }
+
+        function renderSingleCrop(index) {
+            const data = cropDataStore[index];
+            const ctx = data.canvas.getContext('2d');
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, data.cropWidth, data.cropHeight);
+
+            let sx = data.baseX, sy = data.baseY;
+            data.isWide ? sx += data.adjustment : sy += data.adjustment;
+            
+            sx = Math.max(0, Math.min(sx, originalImage.naturalWidth - data.cropWidth));
+            sy = Math.max(0, Math.min(sy, originalImage.naturalHeight - data.cropHeight));
+            
+            const sw = Math.min(data.cropWidth, originalImage.naturalWidth - sx);
+            const sh = Math.min(data.cropHeight, originalImage.naturalHeight - sy);
+
+            ctx.drawImage(originalImage, sx, sy, sw, sh, 0, 0, sw, sh);
+            
+            const dataUrl = data.canvas.toDataURL('image/png');
+            data.downloadLink.href = dataUrl;
+            data.downloadLink.download = `cropped_doc_${String(index + 1).padStart(2, '0')}.png`;
+            data.dataUrl = dataUrl;
+        }
+        
+        // --- Event Listeners ---
+        ratioButtonsContainer.addEventListener('click', (e) => {
+            if (e.target.tagName !== 'BUTTON') return;
+            ratioButtonsContainer.querySelector('.active')?.classList.remove('active');
+            e.target.classList.add('active');
+
+            const ratio = e.target.dataset.ratio;
+            if (ratio === 'custom') {
+                customRatioInputs.style.display = 'flex';
+                updateCustomRatio();
+            } else {
+                customRatioInputs.style.display = 'none';
+                currentAspectRatio = eval(ratio);
+                if (originalImage) initialCropSetup();
+            }
+        });
+        function updateCustomRatio() {
+            const w = parseFloat(customRatioW.value), h = parseFloat(customRatioH.value);
+            if (w > 0 && h > 0) {
+                currentAspectRatio = w / h;
+                if (originalImage) initialCropSetup();
+            }
+        }
+        customRatioW.addEventListener('input', updateCustomRatio);
+        customRatioH.addEventListener('input', updateCustomRatio);
+
+        outputContainer.addEventListener('input', (e) => {
+            if (e.target.type === 'range') {
+                const index = parseInt(e.target.dataset.index, 10);
+                cropDataStore[index].adjustment = parseInt(e.target.value, 10);
+                renderSingleCrop(index);
+            }
+        });
+        
+        outputContainer.addEventListener('click', (e) => {
+            if (e.target.tagName === 'CANVAS') {
+                modalImage.src = cropDataStore[e.target.dataset.index].dataUrl;
+                modal.style.display = 'flex';
+            }
+        });
+
+        modalClose.addEventListener('click', () => modal.style.display = 'none');
+        modal.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; });
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') modal.style.display = 'none'; });
+        
+        downloadAllBtn.addEventListener('click', function() {
+            if (cropDataStore.length === 0) return;
+            const zip = new JSZip();
+            cropDataStore.forEach(item => {
+                const base64Data = item.dataUrl.split(',')[1];
+                zip.file(item.downloadLink.download, base64Data, { base64: true });
+            });
+            zip.generateAsync({ type: "blob" }).then(content => saveAs(content, "cropped_document.zip"));
+        });
+    </script>
+</body>
+</html>
