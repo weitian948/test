@@ -147,98 +147,89 @@ const HTML_CONTENT = `
         
         <div class="input-section">
             <input type="text" class="input-box" id="inputBox" placeholder="请输入您的问题..." />
-            <button class="send-button" id="sendButton" onclick="sendMessage()">发送</button>
+            <button class="send-button" id="sendButton" onclick="window.sendMessage()">发送</button>
         </div>
     </div>
 
     <script>
-        function log(message) {
-            console.log("[前端] " + new Date().toLocaleTimeString() + " - " + message);
-        }
-
-        async function sendMessage() {
-            log("=== 开始发送消息 ===");
-            
-            const inputBox = document.getElementById('inputBox');
-            const sendButton = document.getElementById('sendButton');
-            const displayArea = document.getElementById('displayArea');
-            
-            const message = inputBox.value.trim();
-            log("获取输入内容: \"" + message + "\"");
-            
-            if (!message) {
-                log("消息为空，取消发送");
-                return;
-            }
-            
-            log("禁用输入框和按钮");
-            // 禁用输入和按钮
-            inputBox.disabled = true;
-            sendButton.disabled = true;
-            
-            log("更新显示区域");
-            // 显示用户消息
-            displayArea.innerHTML = 
-                '<strong>您:</strong> ' + message + '\n\n' +
-                '<div class="loading">正在等待Gemini回复...</div>';
-            
-            try {
-                log("准备发送请求到 /api/chat，消息: \"" + message + "\"");
-                const response = await fetch('/api/chat', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ message: message }),
-                });
+        (function() {
+            // 将函数挂载到全局作用域
+            window.sendMessage = async function() {
+                console.log("=== 开始发送消息 ===");
                 
-                log("收到响应，状态码: " + response.status);
-                const data = await response.json();
-                log("收到JSON数据: " + JSON.stringify(data));
+                var inputBox = document.getElementById('inputBox');
+                var sendButton = document.getElementById('sendButton');
+                var displayArea = document.getElementById('displayArea');
                 
-                if (data.response) {
-                    log("成功获取Gemini回复");
-                    displayArea.innerHTML = 
-                        '<strong>您:</strong> ' + message + '\n\n' +
-                        '<strong>Gemini:</strong> ' + data.response;
-                } else {
-                    log("收到错误响应: " + data.error);
-                    displayArea.innerHTML = 
-                        '<strong>您:</strong> ' + message + '\n\n' +
-                        '<div class="error">错误: ' + (data.error || '未知错误') + '</div>';
+                var message = inputBox.value.trim();
+                console.log("获取输入内容: " + message);
+                
+                if (!message) {
+                    console.log("消息为空，取消发送");
+                    return;
                 }
-            } catch (error) {
-                log("发生错误: " + error.message);
+                
+                console.log("禁用输入框和按钮");
+                inputBox.disabled = true;
+                sendButton.disabled = true;
+                
+                console.log("更新显示区域");
                 displayArea.innerHTML = 
-                    '<strong>您:</strong> ' + message + '\n\n' +
-                    '<div class="error">错误: 网络请求失败 - ' + error.message + '</div>';
-            }
+                    '<strong>您:</strong> ' + message + '<br><br>' +
+                    '<div style="color: #666; font-style: italic;">正在等待Gemini回复...</div>';
+                
+                try {
+                    console.log("准备发送请求到 /api/chat");
+                    var response = await fetch('/api/chat', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ message: message }),
+                    });
+                    
+                    console.log("收到响应，状态码: " + response.status);
+                    var data = await response.json();
+                    console.log("收到JSON数据");
+                    
+                    if (data.response) {
+                        console.log("成功获取Gemini回复");
+                        displayArea.innerHTML = 
+                            '<strong>您:</strong> ' + message + '<br><br>' +
+                            '<strong>Gemini:</strong> ' + data.response;
+                    } else {
+                        console.log("收到错误响应");
+                        displayArea.innerHTML = 
+                            '<strong>您:</strong> ' + message + '<br><br>' +
+                            '<div style="color: #dc3545;">错误: ' + (data.error || '未知错误') + '</div>';
+                    }
+                } catch (error) {
+                    console.log("发生错误: " + error.message);
+                    displayArea.innerHTML = 
+                        '<strong>您:</strong> ' + message + '<br><br>' +
+                        '<div style="color: #dc3545;">错误: 网络请求失败</div>';
+                }
+                
+                console.log("重置输入框和按钮");
+                inputBox.value = '';
+                inputBox.disabled = false;
+                sendButton.disabled = false;
+                inputBox.focus();
+                console.log("=== 发送完成 ===");
+            };
             
-            log("重置输入框和按钮");
-            // 重置输入
-            inputBox.value = '';
-            inputBox.disabled = false;
-            sendButton.disabled = false;
-            inputBox.focus();
-            log("=== 发送完成 ===");
-        }
-        
-        // 支持回车发送
-        document.getElementById('inputBox').addEventListener('keypress', function(e) {
-            log("按键事件: key=\"" + e.key + "\"");
-            if (e.key === 'Enter') {
-                log("检测到回车键，触发发送");
-                sendMessage();
-            }
-        });
-        
-        // 页面加载完成日志
-        document.addEventListener('DOMContentLoaded', function() {
-            log("页面加载完成，所有元素已就绪");
-            log("输入框元素已找到");
-            log("按钮元素已找到");
-            log("显示区域元素已找到");
-        });
+            // 回车键支持
+            document.getElementById('inputBox').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    window.sendMessage();
+                }
+            });
+            
+            // 页面加载完成
+            document.addEventListener('DOMContentLoaded', function() {
+                console.log("页面加载完成，所有元素已就绪");
+            });
+        })();
     </script>
 </body>
 </html>
