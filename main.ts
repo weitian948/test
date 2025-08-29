@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.208.0/http/server.ts";
 
 const API_KEY = "AIzaSyDrmBiHqcc120_KX2Rqi9xL36whZfdQ3Xw";
-const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${API_KEY}`;
+const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`;
 
 async function handleRequest(request: Request): Promise<Response> {
   const url = new URL(request.url);
@@ -22,7 +22,7 @@ async function handleRequest(request: Request): Promise<Response> {
       const body = await request.json();
       const userMessage = body.message;
       
-      console.log("[LOG] 收到聊天请求，用户消息: \"" + userMessage + "\"");
+      console.log("[LOG] 收到聊天请求，用户消息: \"" + userMessage + "\"，使用模型: gemini-2.5-flash");
       
       const response = await fetch(GEMINI_API_URL, {
         method: "POST",
